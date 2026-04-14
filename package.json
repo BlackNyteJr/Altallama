@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@supabase/ssr": "^0.10.2",
+    "square": "^44.0.1"
+  }
+}
