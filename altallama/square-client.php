@@ -51,3 +51,6 @@ function square_request(string $method, string $path, ?array $payload = null): a
         "data" => $decoded,
     ];
 }
+
+
+

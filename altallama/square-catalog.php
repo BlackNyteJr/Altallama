@@ -8,6 +8,166 @@ function square_catalog_escape(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, "UTF-8");
 }
 
+function square_catalog_parse_bool(string $value): bool
+{
+    $normalized = strtoupper(trim($value));
+    return in_array($normalized, ["Y", "YES", "TRUE", "1"], true);
+}
+
+function square_catalog_parse_price_to_cents(string $price): ?int
+{
+    $raw = trim($price);
+    if ($raw === "") {
+        return null;
+    }
+
+    $normalized = str_replace([",", " "], [".", ""], $raw);
+    if (!is_numeric($normalized)) {
+        return null;
+    }
+
+    return (int) round(((float) $normalized) * 100);
+}
+
+function square_catalog_extract_primary_category(string $rawCategories, string $rawReportingCategory = ""): string
+{
+    $candidates = [$rawCategories, $rawReportingCategory];
+
+    foreach ($candidates as $raw) {
+        $value = trim($raw);
+        if ($value === "") {
+            continue;
+        }
+
+        $firstCsv = explode(",", $value)[0] ?? "";
+        $firstBranch = explode(">", (string) $firstCsv)[0] ?? "";
+        $category = trim((string) $firstBranch);
+
+        if ($category !== "") {
+            return $category;
+        }
+    }
+
+    return "Uncategorized";
+}
+
+function square_catalog_slugify(string $value): string
+{
+    $value = strtolower(trim($value));
+    $value = preg_replace('/[^a-z0-9]+/', '-', $value) ?? "";
+    $value = trim($value, '-');
+
+    return $value === "" ? "uncategorized" : $value;
+}
+
+function square_catalog_find_csv_file(): ?string
+{
+    $configured = trim((string) getenv("CATALOG_CSV_PATH"));
+    if ($configured !== "") {
+        if (is_file($configured) && is_readable($configured)) {
+            return $configured;
+        }
+
+        $localConfigured = __DIR__ . DIRECTORY_SEPARATOR . ltrim($configured, "\\/");
+        if (is_file($localConfigured) && is_readable($localConfigured)) {
+            return $localConfigured;
+        }
+    }
+
+    $rootDir = dirname(__DIR__);
+    $pattern = $rootDir . DIRECTORY_SEPARATOR . "*_catalog-*.csv";
+    $matches = glob($pattern);
+    if (!is_array($matches) || $matches === []) {
+        return null;
+    }
+
+    usort($matches, static function (string $a, string $b): int {
+        return filemtime($b) <=> filemtime($a);
+    });
+
+    foreach ($matches as $match) {
+        if (is_file($match) && is_readable($match)) {
+            return $match;
+        }
+    }
+
+    return null;
+}
+
+function square_catalog_load_from_csv(?int $limit = null): array
+{
+    $csvPath = square_catalog_find_csv_file();
+    if ($csvPath === null) {
+        return [];
+    }
+
+    $handle = fopen($csvPath, "rb");
+    if ($handle === false) {
+        return [];
+    }
+
+    $headers = fgetcsv($handle);
+    if (!is_array($headers) || $headers === []) {
+        fclose($handle);
+        return [];
+    }
+
+    $headerMap = [];
+    foreach ($headers as $index => $header) {
+        $headerMap[trim((string) $header)] = $index;
+    }
+
+    $requiredColumns = ["Item Name", "Description", "Price", "Archived"];
+    foreach ($requiredColumns as $column) {
+        if (!array_key_exists($column, $headerMap)) {
+            fclose($handle);
+            return [];
+        }
+    }
+
+    $products = [];
+
+    while (($row = fgetcsv($handle)) !== false) {
+        $name = trim((string) ($row[$headerMap["Item Name"]] ?? ""));
+        if ($name === "") {
+            continue;
+        }
+
+        $archivedRaw = (string) ($row[$headerMap["Archived"]] ?? "");
+        if (square_catalog_parse_bool($archivedRaw)) {
+            continue;
+        }
+
+        $priceRaw = (string) ($row[$headerMap["Price"]] ?? "");
+        $amount = square_catalog_parse_price_to_cents($priceRaw);
+
+        $description = trim((string) ($row[$headerMap["Description"]] ?? ""));
+        if ($description === "") {
+            $description = "Alta Llama catalog item.";
+        }
+
+        $rawCategories = (string) ($row[$headerMap["Categories"]] ?? "");
+        $rawReportingCategory = (string) ($row[$headerMap["Reporting Category"]] ?? "");
+        $category = square_catalog_extract_primary_category($rawCategories, $rawReportingCategory);
+
+        $products[] = [
+            "name" => $name,
+            "description" => $description,
+            "price" => square_catalog_format_money($amount, "EUR"),
+            "image_url" => "https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=900&q=80",
+            "category" => $category,
+        ];
+
+        if (is_int($limit) && $limit > 0 && count($products) >= $limit) {
+            break;
+        }
+    }
+
+    fclose($handle);
+
+    return $products;
+}
+
 function square_catalog_format_money(?int $amount, string $currency): string
 {
     if ($amount === null) {
@@ -72,6 +232,8 @@ function square_catalog_extract_products(array $objects, array $imageUrls): arra
             $description = "Limited-run product from the Alta Llama studio catalog.";
         }
 
+        $category = "Uncategorized";
+
         $amount = null;
         $currency = "USD";
         $variations = $itemData["variations"] ?? [];
@@ -108,6 +270,7 @@ function square_catalog_extract_products(array $objects, array $imageUrls): arra
             "description" => $description,
             "price" => square_catalog_format_money($amount, $currency),
             "image_url" => $imageUrl,
+            "category" => $category,
         ];
     }
 
@@ -119,6 +282,15 @@ function square_catalog_fetch(int $limit = 24): array
     $products = [];
     $message = "";
     $environment = "unknown";
+
+    $csvProducts = square_catalog_load_from_csv($limit);
+    if ($csvProducts !== []) {
+        return [
+            "products" => $csvProducts,
+            "message" => "Catalog loaded from local CSV import.",
+            "environment" => "csv",
+        ];
+    }
 
     try {
         $cfg = square_config();
@@ -160,3 +332,63 @@ function square_catalog_fetch(int $limit = 24): array
         "environment" => $environment,
     ];
 }
+
+function square_catalog_category_links(array $products): array
+{
+    $labels = [];
+
+    foreach ($products as $product) {
+        if (!is_array($product)) {
+            continue;
+        }
+
+        $label = trim((string) ($product["category"] ?? "Uncategorized"));
+        if ($label === "") {
+            $label = "Uncategorized";
+        }
+
+        $labels[$label] = true;
+    }
+
+    $categoryLabels = array_keys($labels);
+    natcasesort($categoryLabels);
+
+    $links = [];
+    foreach ($categoryLabels as $label) {
+        $links[] = [
+            "label" => $label,
+            "slug" => square_catalog_slugify((string) $label),
+        ];
+    }
+
+    return $links;
+}
+
+function square_catalog_group_by_category(array $products): array
+{
+    $grouped = [];
+
+    foreach ($products as $product) {
+        if (!is_array($product)) {
+            continue;
+        }
+
+        $label = trim((string) ($product["category"] ?? "Uncategorized"));
+        if ($label === "") {
+            $label = "Uncategorized";
+        }
+
+        if (!array_key_exists($label, $grouped)) {
+            $grouped[$label] = [];
+        }
+
+        $grouped[$label][] = $product;
+    }
+
+    uksort($grouped, 'strnatcasecmp');
+
+    return $grouped;
+}
+
+
+
