@@ -23,7 +23,9 @@ $galleryCatalogMessage = $catalogData["message"];
 <body>
 	<header class="topbar">
 		<div class="container topbar-inner">
-			<a class="brand" href="index.php">Alta Llama</a>
+			<a class="brand" href="index.php" aria-label="Alta Llama home">
+				<img class="brand-logo" src="../pics/Logotipo%20(71%20x%2056%20cm).jpg" alt="Alta Llama">
+			</a>
 
 			<nav class="nav" aria-label="Main navigation">
 				<div class="nav-dropdown mega-dropdown">
@@ -137,15 +139,49 @@ $galleryCatalogMessage = $catalogData["message"];
 	</main>
 
 	<footer class="footer">
-		<div class="container footer-inner">
-			<p>Alta Llama</p>
-			<div class="footer-links">
-				<a href="privacy.php">Privacy Policy</a>
-				<a href="studio-rules.php">Studio Rules</a>
-				<a href="artist-application.php">Artist Application</a>
+		<div class="container footer-grid">
+			<div class="footer-brand-block">
+				<a class="footer-brand" href="index.php" aria-label="Alta Llama home">
+					<img class="footer-logo" src="../pics/Logotipo%20(71%20x%2056%20cm).jpg" alt="Alta Llama">
+				</a>
+				<p class="footer-text">Art supplies, curated materials, and creative spaces for artists, students, and studios.</p>
+				<p class="footer-copy">Â© <?php echo date("Y"); ?> Alta Llama. All rights reserved.</p>
+			</div>
+			<div>
+				<h4 class="footer-title">Quick Links</h4>
+				<div class="footer-links">
+					<a href="index.php">Home</a>
+					<a href="store-product-list.php">Store Product List</a>
+					<a href="catalog.php">Catalog</a>
+					<a href="reservations.php">Reservations</a>
+				</div>
+			</div>
+			<div>
+				<h4 class="footer-title">Legal</h4>
+				<div class="footer-links">
+					<a href="privacy.php">Privacy Policy</a>
+					<a href="studio-rules.php">Studio Rules</a>
+					<a href="artist-application.php">Artist Application</a>
+				</div>
+			</div>
+			<div>
+				<h4 class="footer-title">Connect</h4>
+				<div class="footer-links footer-contact">
+					<a href="mailto:info@altallama.com">info@altallama.com</a>
+					<a href="https://maps.google.com/?q=C.+San+Mill%C3%A1n,+13,+Distrito+Centro,+29013+M%C3%A1laga" target="_blank" rel="noopener">C. San Mill&aacute;n, 13, Distrito Centro, 29013 M&aacute;laga</a>
+				</div>
+				<a class="social-btn insta-btn" href="https://www.instagram.com/altallama_laecomonica/" target="_blank" rel="noopener" aria-label="Follow Alta Llama on Instagram">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+						<path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2Zm0 1.8A3.95 3.95 0 0 0 3.8 7.75v8.5a3.95 3.95 0 0 0 3.95 3.95h8.5a3.95 3.95 0 0 0 3.95-3.95v-8.5a3.95 3.95 0 0 0-3.95-3.95h-8.5Zm8.95 1.35a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 1.8a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4Z"/>
+					</svg>
+					<span>Follow on Instagram</span>
+				</a>
 			</div>
 		</div>
 	</footer>
 	<script src="main.js"></script>
 </body>
 </html>
+
+
+
